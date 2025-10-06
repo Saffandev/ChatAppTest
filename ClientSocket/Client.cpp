@@ -10,7 +10,7 @@
 
 void SendMessageToServer ( SOCKET socket, bool& bSendSuccess )
 {
-	while(1)
+	while ( 1 )
 	{
 		std::cout << "Client: ";
 		std::string message;
@@ -32,7 +32,7 @@ void SendMessageToServer ( SOCKET socket, bool& bSendSuccess )
 
 void ReceiveMessage ( SOCKET socket, bool& bReceiveSuccess )
 {
-	while(1)
+	while ( 1 )
 	{
 		char recvData[ 200 ];
 		int Result = recv ( socket, recvData, 200, 0 );
@@ -65,10 +65,10 @@ int main ( )
 	send
 	recv
 	close*/
-	
+
 	WSADATA wsadata;
 	int Result;
-	
+
 	Result = WSAStartup ( MAKEWORD ( 2, 2 ), &wsadata );
 	if ( Result != 0 )
 	{
@@ -99,13 +99,13 @@ int main ( )
 	}
 	std::cout << "Client..." << std::endl;
 	bool bMessageSent = 1;
-	std::thread t1 ( SendMessageToServer, ConnectSocket, std::ref(bMessageSent) );
-		
+	std::thread t1 ( SendMessageToServer, ConnectSocket, std::ref ( bMessageSent ) );
+
 	bool bMessageReceived = 1;
 	std::thread t2 ( ReceiveMessage, ConnectSocket, std::ref ( bMessageReceived ) );
 	t1.join ( );
 	t2.join ( );
-	
+
 	//while ( true )
 	//{
 	//	bool bMessageSent = 1;

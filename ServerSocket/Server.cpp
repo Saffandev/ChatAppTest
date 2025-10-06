@@ -7,9 +7,9 @@
 #pragma comment(lib,"ws2_32.lib")
 
 
-void SendMessageToClient (SOCKET socket, bool &bSuccess )
+void SendMessageToClient ( SOCKET socket, bool& bSuccess )
 {
-	while(1)
+	while ( 1 )
 	{
 		std::cout << "Server: ";
 		std::string messagetoSend;
@@ -28,9 +28,10 @@ void SendMessageToClient (SOCKET socket, bool &bSuccess )
 	}
 }
 
-void ReceiveMessage ( SOCKET socket, bool &bSuccess )
+void ReceiveMessage ( SOCKET socket, bool& bSuccess )
 {
-	while(1){
+	while ( 1 )
+	{
 		int rResult;
 		char buff[ 200 ];
 		rResult = recv ( socket, buff, 200, 0 );
@@ -62,13 +63,13 @@ int main ( )
 	listen to client
 	accept req
 	recv data
-	clean up*/ 
+	clean up*/
 
 	WSADATA wsadata;
 	int Result;
 	//this will fill wsadata with network data required and return 0 if its successful
 	Result = WSAStartup ( MAKEWORD ( 2, 2 ), &wsadata );
-	
+
 	if ( Result != 0 )
 	{
 		std::cerr << "WSA unable to start: " << WSAGetLastError ( ) << std::endl;
@@ -93,7 +94,7 @@ int main ( )
 	sockaddr.sin_family = AF_INET;//address family for ipv4
 	sockaddr.sin_addr.s_addr = INADDR_ANY;//can accept any ip
 	sockaddr.sin_port = htons ( 8080 );
-	Result = bind ( ListenSocket, (SOCKADDR* ) & sockaddr, sizeof ( sockaddr ) );
+	Result = bind ( ListenSocket, ( SOCKADDR* ) &sockaddr, sizeof ( sockaddr ) );
 	if ( Result == SOCKET_ERROR )
 	{
 		std::cerr << "Socket_Server error: " << WSAGetLastError ( ) << std::endl;
@@ -120,7 +121,7 @@ int main ( )
 	time.tv_usec = 0;
 	int s = (int)ListenSocket + 1;
 
-	Result = select ( s, &fdread, NULL, NULL, &time ); 
+	Result = select ( s, &fdread, NULL, NULL, &time );
 	std::cout << "Select Result: " << Result;
 	std::cout << "Server..." << std::endl;*/
 
@@ -129,19 +130,19 @@ int main ( )
 	if ( ClientSocket == INVALID_SOCKET )
 	{
 		std::cerr << "Server Accept Failed: " << WSAGetLastError ( ) << std::endl;
-		closesocket ( ClientSocket ); 
+		closesocket ( ClientSocket );
 		closesocket ( ListenSocket );
 		WSACleanup ( );
 		return 1;
 	}
 
 	bool bMessageReceived;
-	std::thread t1 ( ReceiveMessage, ClientSocket, std::ref(bMessageReceived) );
+	std::thread t1 ( ReceiveMessage, ClientSocket, std::ref ( bMessageReceived ) );
 
 	bool bMessageSend;
-	std::thread t2 ( SendMessageToClient, ClientSocket, std::ref(bMessageSend) );
+	std::thread t2 ( SendMessageToClient, ClientSocket, std::ref ( bMessageSend ) );
 	t1.join ( );
-	t2.join();
+	t2.join ( );
 
 	//while(1)
 	//{
