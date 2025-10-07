@@ -53,12 +53,15 @@ void ReceiveMessage ( int socket, bool& bReceiveSuccess )
 		{
 			std::cout << "Connection Closed" << std::endl;
 			bReceiveSuccess = 0;
+            close(socket);
+			exit ( EXIT_FAILURE );
 			break;
 		}
 		else
 		{
 			PrintError("Connection_Client Failed");
 			bReceiveSuccess = 0;
+            close(socket);
 			exit ( EXIT_FAILURE );
 			break;
 		}
