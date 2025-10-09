@@ -10,13 +10,8 @@
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 
-void PrintError(const char* Message = " ")
-{
-   perror(Message);
-}
 
-
-void SendMessageToServer ( int socket, bool& bSendSuccess )
+void SendMessageToServer ( int socket )
 {
 	while ( 1 )
 	{
@@ -30,15 +25,13 @@ void SendMessageToServer ( int socket, bool& bSendSuccess )
 
 		if ( Result == SOCKET_ERROR )
 		{
-			PrintError("SendFailed");
-			bSendSuccess = 0;
+			perror("SendFailed");
 			break;
 		}
-		bSendSuccess = 1;
 	}
 }
 
-void ReceiveMessage ( int socket, bool& bReceiveSuccess )
+void ReceiveMessage ( int socket )
 {
 	while ( 1 )
 	{
@@ -47,20 +40,17 @@ void ReceiveMessage ( int socket, bool& bReceiveSuccess )
 		if ( Result > 0 )
 		{
 			std::cout << recvData << std::endl;
-			bReceiveSuccess = 1;
 		}
 		else if ( Result == 0 )
 		{
 			std::cout << "Connection Closed" << std::endl;
-			bReceiveSuccess = 0;
             close(socket);
 			exit ( EXIT_FAILURE );
 			break;
 		}
 		else
 		{
-			PrintError("Connection_Client Failed");
-			bReceiveSuccess = 0;
+			perror("Connection_Client Failed");
             close(socket);
 			exit ( EXIT_FAILURE );
 			break;
@@ -87,7 +77,7 @@ int main ( )
 	ConnectSocket = socket ( AF_INET, SOCK_STREAM, IPPROTO_TCP );
 	if ( ConnectSocket == INVALID_SOCKET )
 	{
-		PrintError("Socket_Client Creation Failed");
+		perror("Socket_Client Creation Failed");
 		return 1;
 	}
 
@@ -98,16 +88,15 @@ int main ( )
 	Result = connect ( ConnectSocket, ( sockaddr* ) &ClientAddr, sizeof ( ClientAddr ) );
 	if ( Result == SOCKET_ERROR )
 	{
-		PrintError("Socket_Client connection failed");
+		perror("Socket_Client connection failed");
 		close ( ConnectSocket );
 		return 1;
 	}
 	std::cout << "Client..." << std::endl;
-	bool bMessageSent = 1;
-	std::thread t1 ( SendMessageToServer, ConnectSocket, std::ref ( bMessageSent ) );
+	std::thread t1 ( SendMessageToServer, ConnectSocket );
 
 	bool bMessageReceived = 1;
-	std::thread t2 ( ReceiveMessage, ConnectSocket, std::ref ( bMessageReceived ) );
+	std::thread t2 ( ReceiveMessage, ConnectSocket);
 	t1.join ( );
 	t2.join ( );
 
