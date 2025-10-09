@@ -1,17 +1,13 @@
 //client
-
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <iostream>
-#include <thread>
-#include <arpa/inet.h>
-
-#define INVALID_SOCKET -1
-#define SOCKET_ERROR -1
+#include "client_l.h"
 
 
-void SendMessageToServer ( int socket )
+Client::Client()
+{
+	ServerSocket = INVALID_SOCKET;
+}
+
+void Client::SendMessageToServer ( )
 {
 	while ( 1 )
 	{
@@ -21,7 +17,7 @@ void SendMessageToServer ( int socket )
 		char hostname[ 20 ];
 		gethostname ( hostname, 20 );
 		message = std::string ( hostname ) + ": " + message;
-		int Result = send ( socket, message.c_str ( ), 200, 0 );
+		int Result = send ( ServerSocket, message.c_str ( ), 200, 0 );
 
 		if ( Result == SOCKET_ERROR )
 		{
@@ -31,12 +27,12 @@ void SendMessageToServer ( int socket )
 	}
 }
 
-void ReceiveMessage ( int socket )
+void Client::ReceiveMessageFomServer ( )
 {
 	while ( 1 )
 	{
 		char recvData[ 200 ];
-		int Result = recv ( socket, recvData, 200, 0 );
+		int Result = recv ( ServerSocket, recvData, 200, 0 );
 		if ( Result > 0 )
 		{
 			std::cout << recvData << std::endl;
@@ -44,14 +40,14 @@ void ReceiveMessage ( int socket )
 		else if ( Result == 0 )
 		{
 			std::cout << "Connection Closed" << std::endl;
-            close(socket);
+            close(ServerSocket);
 			exit ( EXIT_FAILURE );
 			break;
 		}
 		else
 		{
 			perror("Connection_Client Failed");
-            close(socket);
+            close(ServerSocket);
 			exit ( EXIT_FAILURE );
 			break;
 		}
@@ -61,23 +57,20 @@ void ReceiveMessage ( int socket )
 
 
 
-int main ( )
+bool Client::SetupClient ( )
 {
 
 	/*wsa startup
-	socket
+	ServerSocket
 	connect to server
 	send
 	recv
 	close*/
 
-	int Result;
-	int ConnectSocket = INVALID_SOCKET;
-
-	ConnectSocket = socket ( AF_INET, SOCK_STREAM, IPPROTO_TCP );
-	if ( ConnectSocket == INVALID_SOCKET )
+	ServerSocket = socket ( AF_INET, SOCK_STREAM, IPPROTO_TCP );
+	if ( ServerSocket == INVALID_SOCKET )
 	{
-		perror("Socket_Client Creation Failed");
+		perror("ServerSocket_Client Creation Failed");
 		return 1;
 	}
 
@@ -85,22 +78,27 @@ int main ( )
 	ClientAddr.sin_family = AF_INET;
 	ClientAddr.sin_port = htons ( 8080 );
 	inet_pton ( AF_INET, "127.0.0.1", &ClientAddr.sin_addr );
-	Result = connect ( ConnectSocket, ( sockaddr* ) &ClientAddr, sizeof ( ClientAddr ) );
+	Result = connect ( ServerSocket, ( sockaddr* ) &ClientAddr, sizeof ( ClientAddr ) );
 	if ( Result == SOCKET_ERROR )
 	{
-		perror("Socket_Client connection failed");
-		close ( ConnectSocket );
+		perror("ServerSocket_Client connection failed");
+		close ( ServerSocket );
 		return 1;
 	}
 	std::cout << "Client..." << std::endl;
-	std::thread t1 ( SendMessageToServer, ConnectSocket );
-
-	bool bMessageReceived = 1;
-	std::thread t2 ( ReceiveMessage, ConnectSocket);
+	std::thread t1 ( &Client::SendMessageToServer,this );
+	std::thread t2 ( &Client::ReceiveMessageFomServer,this);
 	t1.join ( );
 	t2.join ( );
 
 
-	close ( ConnectSocket );
+	close ( ServerSocket );
 	return 0;
+}
+
+int main()
+{
+	Client c;
+	bool bSuccess = c.SetupClient();
+	return bSuccess;
 }

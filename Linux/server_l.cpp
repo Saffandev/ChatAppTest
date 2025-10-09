@@ -1,19 +1,14 @@
 //server
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <iostream>
-#include <thread>
-#include <unistd.h>
-#include <vector>
-#include <signal.h>
+#include "server_l.h"
 
-#define INVALID_SOCKET -1
-#define SOCKET_ERROR -1
-#define PORT 8080
 
-std::vector<int> ConnectdClients;
 
-void ListenToClients(const int& ServerSocket)
+Server::Server()
+{
+    ServerSocket = INVALID_SOCKET;
+    signal(SIGINT,Server::HandleTermination);
+}
+void Server::ListenToClients()
 {
 
     fd_set readset;
@@ -47,7 +42,7 @@ void ListenToClients(const int& ServerSocket)
         }
         std::cout<<"Running the select call\n";
         timeval serverTimeOut;
-        serverTimeOut.tv_sec = 5;
+        serverTimeOut.tv_sec = 20;
         serverTimeOut.tv_usec = 0;
         int Result = select(MaxSocketNum + 1 , &readset, NULL, NULL, &serverTimeOut);
         if(Result == SOCKET_ERROR)
@@ -112,12 +107,12 @@ void ListenToClients(const int& ServerSocket)
 
 }
 
-void HandleTermination(int sign)
+void Server::HandleTermination(int sign)
 {
     std::cout<<"Termination called from the terminal\n";
     exit(EXIT_FAILURE);
 }
-int main ( )
+bool Server::SetupServer ( )
 {
 	/*create wsadata
 	wsa startup
@@ -128,39 +123,33 @@ int main ( )
 	recv data
 	clean up*/
 
-    signal(SIGINT,HandleTermination);
-	int Result;
-
-	//socket for listen server
-	int ListenSocket = INVALID_SOCKET;
-
-	ListenSocket = socket ( AF_INET, SOCK_STREAM, IPPROTO_TCP );
-	if ( ListenSocket == INVALID_SOCKET )
+	ServerSocket = socket ( AF_INET, SOCK_STREAM, IPPROTO_TCP );
+	if ( ServerSocket == INVALID_SOCKET )
 	{
 		perror("Socket Creation Falied");
-		close(ListenSocket);
+		close(ServerSocket);
 		
 		return 1;
 	}
 	std::cout << "Socket Creation successful" << std::endl;
 
     int sockopt = 1;
-    if(setsockopt(ListenSocket,SOL_SOCKET,SO_REUSEADDR,&sockopt,sizeof(sockopt)) < 0)
+    if(setsockopt(ServerSocket,SOL_SOCKET,SO_REUSEADDR,&sockopt,sizeof(sockopt)) < 0)
     {
         perror("SocketOption: ");
-        close(ListenSocket);
+        close(ServerSocket);
         return 1;
     }
 
-	sockaddr_in serversockaddr;
-	serversockaddr.sin_family = AF_INET;//address family for ipv4
-	serversockaddr.sin_addr.s_addr = INADDR_ANY;//can accept any ip
-	serversockaddr.sin_port = htons ( PORT );
-	Result = bind ( ListenSocket, (sockaddr*) &serversockaddr, sizeof ( sockaddr ) );
+	
+	ServerSockAddr.sin_family = AF_INET;//address family for ipv4
+	ServerSockAddr.sin_addr.s_addr = INADDR_ANY;//can accept any ip
+	ServerSockAddr.sin_port = htons ( PORT );
+	Result = bind ( ServerSocket, (sockaddr*) &ServerSockAddr, sizeof ( sockaddr ) );
 	if ( Result == SOCKET_ERROR )
 	{
         perror("Unable to bind to socket");
-		close ( ListenSocket );
+		close ( ServerSocket );
         std::string er = "sudo lsof -i :" + std::to_string(PORT);
         system(er.c_str());
 		return 1;
@@ -168,12 +157,21 @@ int main ( )
     std::cout<<"Bind to socket successful"<<std::endl;
 
        
-    std::thread ListenThread(ListenToClients,std::ref(ListenSocket));
+    std::thread ListenThread(&Server::ListenToClients,this);
     ListenThread.join();
 
-	close ( ListenSocket );
+	close ( ServerSocket );
     for(int clientSocket : ConnectdClients)
     {
         close(clientSocket);
     }
+    return 0;
+}
+
+
+int main()
+{
+    Server s1;
+    s1.SetupServer();
+    return 0;
 }
