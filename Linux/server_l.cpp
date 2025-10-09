@@ -1,12 +1,13 @@
 //server
 #include "server_l.h"
-
+#include <cstring>
 
 
 Server::Server()
 {
     ServerSocket = INVALID_SOCKET;
     signal(SIGINT,Server::HandleTermination);
+    
 }
 void Server::ListenToClients()
 {
@@ -51,7 +52,7 @@ void Server::ListenToClients()
             break;
         }
         std::cout<<"it was stuck at the select call\n";
-        if(FD_ISSET(ServerSocket,&readset))
+        if(ConnectdClients.size() < maxClientCount && (ServerSocket,&readset))
         {
             sockaddr_in ClientAddr;
             int ClientSocket;
@@ -71,23 +72,23 @@ void Server::ListenToClients()
             std::cout<<"Server is not ready for new request" << std::endl;
         }
 
-        for(int &client : ConnectdClients)
+        for(auto client_it = ConnectdClients.begin(); client_it != ConnectdClients.end(); client_it++)
         {
-            if(client > 0 && FD_ISSET(client,&readset) )
+            if(*client_it > 0 && FD_ISSET(*client_it,&readset) )
             {
                 char message[100];
-                int Result = read(client,message,100);
+                int Result = read(*client_it,message,100);
                 if(Result <= 0)
                 {
                     perror("No data to read from socket");
-                    close(client);
-                    client = 0;
+                    close(*client_it);
+                    ConnectdClients.erase(client_it);
                 }
                else
                { 
                     for(const int& c : ConnectdClients)
                     {
-                        if(c != client)
+                        if(c != *client_it)
                         {
                             if(send(c,message,100,0) < 0)
                             {
@@ -99,7 +100,7 @@ void Server::ListenToClients()
             }
             else
             {
-                std::cout<<"No fd set for client: " << client << std::endl;
+                std::cout<<"No fd set for client: " << *client_it << std::endl;
             }
         }
         std::cout<<"-----------------\n";
@@ -173,5 +174,6 @@ int main()
 {
     Server s1;
     s1.SetupServer();
+
     return 0;
 }
