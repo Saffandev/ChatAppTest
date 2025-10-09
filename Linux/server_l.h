@@ -14,6 +14,7 @@ class Server
 {
     private:
 std::vector<int> ConnectdClients;
+int maxClientCount = 10;
 
 public:
 int Result;
