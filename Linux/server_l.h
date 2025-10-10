@@ -1,31 +1,37 @@
+#include <map>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <iostream>
 #include <thread>
-#include <unistd.h>
 #include <vector>
+#include <string>
 #include <signal.h>
-
+#include <unistd.h>
+#include <fstream>
+#include <iostream>
+#include <cstring>
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
-#define PORT 8080
 
 class Server
 {
-    private:
-std::vector<int> ConnectdClients;
-int maxClientCount = 10;
+
+private:
+    std::vector<int> ConnectdClients;
+    int maxClientCount ;
+    int port;
+public:
+    int Result;
+    int ServerSocket;
+    sockaddr_in ServerSockAddr;
+    std::string ConfigFileName;
 
 public:
-int Result;
-int ServerSocket;
-sockaddr_in ServerSockAddr;
+    Server();
+    bool SetupServer();
 
 public:
-Server();
-bool SetupServer();
-void ListenToClients();
-static void HandleTermination(int sign);
-
+    void ListenToClients();
+    static void HandleTermination(int sign);
+    std::map<std::string,std::string> ExtractDataFromFile(std::string ConfigFile);
 
 };

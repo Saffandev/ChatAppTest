@@ -1,14 +1,46 @@
 //server
+
 #include "server_l.h"
-#include <cstring>
 
 
 Server::Server()
 {
     ServerSocket = INVALID_SOCKET;
     signal(SIGINT,Server::HandleTermination);
-    
+    ConfigFileName = "serverconfig.txt";
 }
+
+std::map<std::string,std::string> Server::ExtractDataFromFile(std::string ConfigFile)
+{
+    std::map<std::string, std::string> ConfigData;
+    std::fstream filestream;
+    std::string filedata;
+    filestream.open(ConfigFile);
+    if(!filestream.is_open())
+    {
+        std::cout<<"Cannot open the file " << ConfigFile << ", terminating the programming is there is not data to proceed;\n";
+        exit(EXIT_FAILURE);
+    }
+  
+    while(std::getline(filestream,filedata))
+    {
+        if(filedata.empty() || filedata[0] == '#')
+        {
+            continue;
+        }
+        size_t pos = filedata.find('=');
+        if(pos != std::string::npos)
+        {
+            std::string key = filedata.substr(0,pos);
+            std::string value = filedata.substr(pos+1);
+            ConfigData[key] = value;
+        }
+    }
+
+    return ConfigData;
+
+}
+
 void Server::ListenToClients()
 {
 
@@ -52,11 +84,12 @@ void Server::ListenToClients()
             break;
         }
         std::cout<<"it was stuck at the select call\n";
-        if(ConnectdClients.size() < maxClientCount && (ServerSocket,&readset))
+        if(ConnectdClients.size() < maxClientCount &&  FD_ISSET(ServerSocket,&readset))
         {
             sockaddr_in ClientAddr;
             int ClientSocket;
             socklen_t sl = sizeof(ClientAddr);
+            std::cout<<"trying to accept something...\n";
             ClientSocket = accept(ServerSocket,NULL,NULL);
             if(ClientSocket <=0)
             {
@@ -74,7 +107,8 @@ void Server::ListenToClients()
 
         for(auto client_it = ConnectdClients.begin(); client_it != ConnectdClients.end(); client_it++)
         {
-            if(*client_it > 0 && FD_ISSET(*client_it,&readset) )
+            std::cout<<*client_it <<std::endl;
+            if(FD_ISSET(*client_it,&readset) )
             {
                 char message[100];
                 int Result = read(*client_it,message,100);
@@ -113,6 +147,7 @@ void Server::HandleTermination(int sign)
     std::cout<<"Termination called from the terminal\n";
     exit(EXIT_FAILURE);
 }
+
 bool Server::SetupServer ( )
 {
 	/*create wsadata
@@ -124,7 +159,12 @@ bool Server::SetupServer ( )
 	recv data
 	clean up*/
 
-	ServerSocket = socket ( AF_INET, SOCK_STREAM, IPPROTO_TCP );
+    std::map<std::string,std::string> ConfigData = ExtractDataFromFile(ConfigFileName);
+    maxClientCount = std::stoi(ConfigData["maxclient"]);
+    port = std::stoi(ConfigData["port"]);
+    std::cout<<port << std::endl;
+    
+    ServerSocket = socket ( AF_INET, SOCK_STREAM, IPPROTO_TCP );
 	if ( ServerSocket == INVALID_SOCKET )
 	{
 		perror("Socket Creation Falied");
@@ -145,13 +185,13 @@ bool Server::SetupServer ( )
 	
 	ServerSockAddr.sin_family = AF_INET;//address family for ipv4
 	ServerSockAddr.sin_addr.s_addr = INADDR_ANY;//can accept any ip
-	ServerSockAddr.sin_port = htons ( PORT );
+	ServerSockAddr.sin_port = htons ( port );
 	Result = bind ( ServerSocket, (sockaddr*) &ServerSockAddr, sizeof ( sockaddr ) );
 	if ( Result == SOCKET_ERROR )
 	{
         perror("Unable to bind to socket");
 		close ( ServerSocket );
-        std::string er = "sudo lsof -i :" + std::to_string(PORT);
+        std::string er = "sudo lsof -i :" + std::to_string(port);
         system(er.c_str());
 		return 1;
 	}
@@ -168,7 +208,6 @@ bool Server::SetupServer ( )
     }
     return 0;
 }
-
 
 int main()
 {
