@@ -8,6 +8,7 @@ Server::Server()
     ServerSocket = INVALID_SOCKET;
     signal(SIGINT,Server::HandleTermination);
     ConfigFileName = "serverconfig.txt";
+
 }
 
 std::map<std::string,std::string> Server::ExtractDataFromFile(std::string ConfigFile)
@@ -18,7 +19,8 @@ std::map<std::string,std::string> Server::ExtractDataFromFile(std::string Config
     filestream.open(ConfigFile);
     if(!filestream.is_open())
     {
-        std::cout<<"Cannot open the file " << ConfigFile << ", terminating the programming is there is not data to proceed;\n";
+       // std::cout<<"Cannot open the file " << ConfigFile << ", terminating the programming is there is not data to proceed;\n";
+        syslog(LOG_ERR,"Cannot open the file %s terminating the program as there is no data to proceed, check for file name",ConfigFile.c_str());
         exit(EXIT_FAILURE);
     }
   
@@ -49,7 +51,8 @@ void Server::ListenToClients()
     std::cout<<"listening to clients " <<std::endl;
     if(listen(ServerSocket,SOMAXCONN) < 0)
     {
-        perror("Listen Failed: ");
+      //  perror("Listen Failed: ");
+        syslog(LOG_ERR,"Listen Failed: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
     while(1)
@@ -80,7 +83,7 @@ void Server::ListenToClients()
         int Result = select(MaxSocketNum + 1 , &readset, NULL, NULL, &serverTimeOut);
         if(Result == SOCKET_ERROR)
         {
-            perror("Select gave some error: ");
+            syslog(LOG_ERR,"Select gave some error: %s", strerror(errno));
             break;
         }
         std::cout<<"it was stuck at the select call\n";
@@ -93,7 +96,7 @@ void Server::ListenToClients()
             ClientSocket = accept(ServerSocket,NULL,NULL);
             if(ClientSocket <=0)
             {
-                perror("Accept Failed");
+                syslog(LOG_ERR,"Accept Falied: %s",strerror(errno));
                 exit(EXIT_FAILURE);
             }
             std::cout<<"Get a client accept request: " << ClientSocket <<std::endl;
@@ -115,6 +118,7 @@ void Server::ListenToClients()
                 if(Result <= 0)
                 {
                     perror("No data to read from socket");
+
                     close(*client_it);
                     ConnectdClients.erase(client_it);
                 }
@@ -126,7 +130,7 @@ void Server::ListenToClients()
                         {
                             if(send(c,message,100,0) < 0)
                             {
-                                perror("Send Failed");
+                                syslog(LOG_ERR,"Send Failed: %s",strerror(errno));
                             }
                         }
                     }
@@ -167,7 +171,7 @@ bool Server::SetupServer ( )
     ServerSocket = socket ( AF_INET, SOCK_STREAM, IPPROTO_TCP );
 	if ( ServerSocket == INVALID_SOCKET )
 	{
-		perror("Socket Creation Falied");
+        syslog(LOG_ERR,"Socket Creation Failed: %s",strerror(errno));
 		close(ServerSocket);
 		
 		return 1;
@@ -189,7 +193,7 @@ bool Server::SetupServer ( )
 	Result = bind ( ServerSocket, (sockaddr*) &ServerSockAddr, sizeof ( sockaddr ) );
 	if ( Result == SOCKET_ERROR )
 	{
-        perror("Unable to bind to socket");
+        syslog(LOG_ERR,"Unable to bind : %s",strerror(errno));
 		close ( ServerSocket );
         std::string er = "sudo lsof -i :" + std::to_string(port);
         system(er.c_str());
@@ -209,10 +213,13 @@ bool Server::SetupServer ( )
     return 0;
 }
 
+
 int main()
 {
+
+    openlog("ServerLog",LOG_PID | LOG_CONS | LOG_PERROR, LOG_USER);
     Server s1;
     s1.SetupServer();
-
+    closelog();
     return 0;
 }
